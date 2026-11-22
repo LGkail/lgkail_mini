@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://telegram.org"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--tg-theme-bg-color, #ffffff);
+      color: var(--tg-theme-text-color, #000000);
+      padding: 16px;
+      margin: 0;
+    }
+    .card {
+      background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    button {
+      background-color: var(--tg-theme-button-color, #3390ec);
+      color: var(--tg-theme-button-text-color, #ffffff);
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:active { opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+  <h3>Управление ESP32</h3>
+
+  <div class="card">
+    <span>Температура в комнате</span>
+    <strong id="temp">24.5 °C</strong>
+  </div>
+
+  <div class="card">
+    <span>Освещение</span>
+    <button onclick="sendCommand('LIGHT_TOGGLE')">Переключить</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand(); // Развернуть на весь экран
+
+    function sendCommand(cmd) {
+      tg.HapticFeedback.impactOccurred('light'); // Вибрация при клике
+      tg.sendData(cmd); // Отправка команды в ESP32
+    }
+  </script>
+</body>
+</html>
