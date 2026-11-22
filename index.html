@@ -1,62 +1,283 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <script src="https://telegram.org"></script>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: var(--tg-theme-bg-color, #ffffff);
-      color: var(--tg-theme-text-color, #000000);
-      padding: 16px;
-      margin: 0;
-    }
-    .card {
-      background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    button {
-      background-color: var(--tg-theme-button-color, #3390ec);
-      color: var(--tg-theme-button-text-color, #ffffff);
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    button:active { opacity: 0.8; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LGkail Mini — Панель управления</title>
+<style>
+  :root { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --accent: #3b82f6; --ok: #10b981; --err: #ef4444; --border: #334155; }
+  * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); }
+  header { background: var(--card); padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  header h1 { margin: 0; font-size: 18px; color: var(--accent); }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; }
+  nav button { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  nav button.active { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  main { max-width: 1100px; margin: 20px auto; padding: 0 15px; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h3 { margin: 0 0 8px 0; font-size: 13px; color: var(--muted); text-transform: uppercase; }
+  .card .val { font-size: 22px; font-weight: 700; }
+  .card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: #162032; color: var(--muted); font-weight: 600; }
+  input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 6px; font-size: 14px; }
+  .btn { background: var(--accent); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .btn-ok { background: var(--ok); }
+  .btn-err { background: var(--err); }
+  .btn-sm { padding: 4px 8px; font-size: 12px; }
+  .row-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; background: var(--card); padding: 14px; border-radius: 8px; border: 1px solid var(--border); }
+  canvas { width: 100%; height: 280px; background: #0b1120; border-radius: 8px; border: 1px solid var(--border); margin-top: 12px; }
+  .badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .b-ok { background: rgba(16,185,129,0.2); color: var(--ok); }
+  .b-warn { background: rgba(245,158,11,0.2); color: #f59e0b; }
+  .b-err { background: rgba(239,68,68,0.2); color: var(--err); }
+</style>
 </head>
 <body>
-
-  <h3>Управление ESP32</h3>
-
-  <div class="card">
-    <span>Температура в комнате</span>
-    <strong id="temp">24.5 °C</strong>
+<header>
+  <h1>⚡ LGkail Mini</h1>
+  <nav>
+    <button class="active" onclick="showTab('tel', this)">📊 Телеметрия</button>
+    <button onclick="showTab('dev', this)">🛠 Приборы</button>
+    <button onclick="showTab('usr', this)">👥 Пользователи</button>
+    <button onclick="showTab('lab', this)">🧪 Лаборатории</button>
+  </nav>
+</header>
+<main>
+  <!-- ВКЛАДКА 1: ТЕЛЕМЕТРИЯ -->
+  <div id="tel" class="tab active">
+    <div class="grid" id="telGrid"></div>
   </div>
 
-  <div class="card">
-    <span>Освещение</span>
-    <button onclick="sendCommand('LIGHT_TOGGLE')">Переключить</button>
+  <!-- ВКЛАДКА 2: ПРИБОРЫ -->
+  <div id="dev" class="tab">
+    <div class="row-form">
+      <input id="dName" placeholder="Наименование (Fluke 87V)">
+      <input id="dInv" placeholder="Инв. №">
+      <input id="dSer" placeholder="Зав. №">
+      <input id="dLoc" placeholder="Локация (Цех 1)">
+      <input id="dDate" placeholder="Поверка (ДД.ММ.ГГ или ММ.ГГ)">
+      <button class="btn btn-ok" onclick="addDevice()">+ Добавить прибор</button>
+    </div>
+    <div style="margin-bottom:10px; display:flex; gap:10px;">
+      <input id="dSearch" placeholder="🔍 Поиск по названию, номеру или локации..." style="flex:1" oninput="renderDevices()">
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>ID</th><th>Наименование</th><th>Инв. / Зав. №</th><th>Локация</th><th>Срок поверки</th><th>Статус</th><th>Действия</th></tr></thead>
+        <tbody id="devBody"></tbody>
+      </table>
+    </div>
   </div>
 
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand(); // Развернуть на весь экран
+  <!-- ВКЛАДКА 3: ПОЛЬЗОВАТЕЛИ -->
+  <div id="usr" class="tab">
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Chat ID</th><th>Имя</th><th>Логин</th><th>Роль</th><th>Локации (через запятую или ALL)</th><th>Действия</th></tr></thead>
+        <tbody id="usrBody"></tbody>
+      </table>
+    </div>
+  </div>
 
-    function sendCommand(cmd) {
-      tg.HapticFeedback.impactOccurred('light'); // Вибрация при клике
-      tg.sendData(cmd); // Отправка команды в ESP32
+  <!-- ВКЛАДКА 4: ЛАБОРАТОРИИ -->
+  <div id="lab" class="tab">
+    <div class="card" style="margin-bottom:16px;">
+      <h3>Лаборатория №1: Анализатор ёмкости АКБ 18650 (INA226)</h3>
+      <div id="labSensorWarn" style="color:var(--err); margin-bottom:10px; display:none;">⚠️ Датчик INA226 не обнаружен на шине I2C!</div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+        <select id="labMode">
+          <option value="1">Режим 1: Номинальный (10 Ом / ~0.35 А)</option>
+          <option value="2">Режим 2: Нагрузочный (2.2 Ом / ~1.6 А)</option>
+        </select>
+        <button class="btn btn-ok" id="btnLabStart" onclick="labControl('start')">▶ Старт разряда</button>
+        <button class="btn btn-err" id="btnLabStop" onclick="labControl('stop')">⏹ Стоп</button>
+      </div>
+      <div class="grid" id="labStats"></div>
+      <canvas id="labChart" width="900" height="280"></canvas>
+    </div>
+    <div class="grid">
+      <div class="card"><h3>Лаборатория №2: Осциллограф</h3><div class="val" style="color:var(--muted)">Слот зарезервирован</div><div class="sub">Модуль расширения аппаратной части</div></div>
+      <div class="card"><h3>Лаборатория №3: Генератор сигналов</h3><div class="val" style="color:var(--muted)">Слот зарезервирован</div><div class="sub">Модуль расширения аппаратной части</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+let devicesCache = [];
+let usersCache = [];
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'dev') loadDevices();
+  if (id === 'usr') loadUsers();
+  if (id === 'lab') loadLabGraph();
+}
+
+async function fetchTelemetry() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    const pwr = d.isBat ? `АКБ 2S (${d.batPct}%, ${d.batV.toFixed(2)} В)` : 'Сеть 220 В';
+    const sd = !d.sdOk ? 'Отсутствует' : (d.sdErr ? '⚠️ АВАРИЯ' : `${d.sdUsed} / ${d.sdTot} МБ`);
+    const h = Math.floor(d.up / 3600), m = Math.floor((d.up % 3600) / 60), s = d.up % 60;
+    document.getElementById('telGrid').innerHTML = `
+      <div class="card"><h3>Питание платы</h3><div class="val">${pwr}</div><div class="sub">Контроль АЦП GPIO 1</div></div>
+      <div class="card"><h3>Время работы</h3><div class="val">${h}ч ${m}м ${s}с</div><div class="sub">Время: ${d.time}</div></div>
+      <div class="card"><h3>Память RAM</h3><div class="val">${d.ramUsed} / ${d.ramTot} КБ</div><div class="sub">Внутренняя SRAM</div></div>
+      <div class="card"><h3>Память PSRAM</h3><div class="val">${d.psramUsed} / ${d.psramTot} КБ</div><div class="sub">Внешняя Octal PSRAM</div></div>
+      <div class="card"><h3>SD-карта</h3><div class="val">${sd}</div><div class="sub">Хранилище CSV</div></div>
+      <div class="card"><h3>Сеть Wi-Fi</h3><div class="val">${d.ssid}</div><div class="sub">IP: ${d.ip} (${d.rssi} дБм)</div></div>
+    `;
+  } catch (e) {}
+}
+
+async function loadDevices() {
+  const r = await fetch('/api/devices');
+  devicesCache = await r.json();
+  renderDevices();
+}
+
+function renderDevices() {
+  const q = document.getElementById('dSearch').value.toLowerCase();
+  const states = ['<span class="badge b-ok">В работе</span>', '<span class="badge b-warn">На поверке</span>', '<span class="badge b-err">Ждёт дату</span>'];
+  let html = '';
+  devicesCache.filter(d => d.name.toLowerCase().includes(q) || d.inv.toLowerCase().includes(q) || d.ser.toLowerCase().includes(q) || d.loc.toLowerCase().includes(q))
+    .forEach(d => {
+      html += `<tr>
+        <td>${d.id}</td><td><b>${d.name}</b></td><td>${d.inv} / ${d.ser}</td><td>${d.loc}</td><td>${d.date}</td>
+        <td>${states[d.state] || ''}</td>
+        <td><button class="btn btn-err btn-sm" onclick="delDevice(${d.id})">Удалить</button></td>
+      </tr>`;
+    });
+  document.getElementById('devBody').innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:var(--muted)">Список пуст</td></tr>';
+}
+
+async function addDevice() {
+  const params = new URLSearchParams({
+    name: document.getElementById('dName').value,
+    inv: document.getElementById('dInv').value,
+    ser: document.getElementById('dSer').value,
+    loc: document.getElementById('dLoc').value,
+    date: document.getElementById('dDate').value
+  });
+  if (!params.get('name') || !params.get('date')) return alert('Заполните название и дату поверки!');
+  const r = await fetch('/api/device/add?' + params.toString(), { method: 'POST' });
+  if (r.ok) {
+    ['dName','dInv','dSer','dLoc','dDate'].forEach(id => document.getElementById(id).value = '');
+    loadDevices();
+  } else alert('Ошибка формата даты! Используйте ДД.ММ.ГГ или ММ.ГГ');
+}
+
+async function delDevice(id) {
+  if (!confirm('Удалить прибор #' + id + '?')) return;
+  await fetch('/api/device/del?id=' + id, { method: 'POST' });
+  loadDevices();
+}
+
+async function loadUsers() {
+  const r = await fetch('/api/users');
+  usersCache = await r.json();
+  let html = '';
+  usersCache.forEach(u => {
+    html += `<tr>
+      <td>${u.id}</td><td><b>${u.name}</b></td><td>@${u.user}</td>
+      <td><select id="role_${u.id}">
+        <option value="0" ${u.role==0?'selected':''}>Ожидает</option>
+        <option value="1" ${u.role==1?'selected':''}>User</option>
+        <option value="2" ${u.role==2?'selected':''}>Admin</option>
+        <option value="3" ${u.role==3?'selected':''}>Banned</option>
+      </select></td>
+      <td><input id="loc_${u.id}" value="${u.loc}"></td>
+      <td>
+        <button class="btn btn-ok btn-sm" onclick="saveUser(${u.id})">Сохранить</button>
+        <button class="btn btn-err btn-sm" onclick="delUser(${u.id})">Удалить</button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById('usrBody').innerHTML = html || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Пользователей нет</td></tr>';
+}
+
+async function saveUser(id) {
+  const role = document.getElementById('role_' + id).value;
+  const loc = encodeURIComponent(document.getElementById('loc_' + id).value);
+  await fetch(`/api/user/update?id=${id}&role=${role}&loc=${loc}`, { method: 'POST' });
+  loadUsers();
+}
+
+async function delUser(id) {
+  if (!confirm('Удалить пользователя?')) return;
+  await fetch('/api/user/del?id=' + id, { method: 'POST' });
+  loadUsers();
+}
+
+async function fetchLab() {
+  try {
+    const r = await fetch('/api/lab');
+    const d = await r.json();
+    document.getElementById('labSensorWarn').style.display = d.ok ? 'none' : 'block';
+    document.getElementById('btnLabStart').disabled = !d.ok || d.run;
+    document.getElementById('btnLabStop').disabled = !d.run;
+    const m = Math.floor(d.sec / 60), s = d.sec % 60;
+    document.getElementById('labStats').innerHTML = `
+      <div class="card"><h3>Напряжение АКБ</h3><div class="val">${d.v.toFixed(3)} В</div><div class="sub">Старт (ХХ): ${d.v0.toFixed(2)} В</div></div>
+      <div class="card"><h3>Ток разряда</h3><div class="val">${d.a.toFixed(3)} А</div><div class="sub">Отсечка: 3.00 В</div></div>
+      <div class="card"><h3>Отданная ёмкость</h3><div class="val" style="color:var(--ok)">${d.mah.toFixed(1)} мА·ч</div><div class="sub">Энергия: ${d.wh.toFixed(2)} Вт·ч</div></div>
+      <div class="card"><h3>Время теста</h3><div class="val">${m}м ${s}с</div><div class="sub">${d.run ? '🟢 Идёт разряд' : '⚪ Остановлен'}</div></div>
+    `;
+    if (d.run) loadLabGraph();
+  } catch (e) {}
+}
+
+async function labControl(cmd) {
+  const mode = document.getElementById('labMode').value;
+  await fetch(`/api/lab/${cmd}?mode=${mode}`, { method: 'POST' });
+  fetchLab();
+  loadLabGraph();
+}
+
+async function loadLabGraph() {
+  try {
+    const r = await fetch('/api/lab/graph');
+    const pts = await r.json();
+    const cv = document.getElementById('labChart');
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (pts.length < 2) {
+      ctx.fillStyle = '#64748b'; ctx.font = '14px sans-serif';
+      ctx.fillText('График появится после запуска теста разряда...', 20, 40);
+      return;
     }
-  </script>
+    const maxT = pts[pts.length - 1][0] || 1;
+    const drawLine = (idx, minV, maxV, color) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+      pts.forEach((p, i) => {
+        const x = 40 + (p[0] / maxT) * (cv.width - 60);
+        const y = (cv.height - 30) - ((p[idx] - minV) / (maxV - minV)) * (cv.height - 50);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    };
+    drawLine(1, 2.8, 4.3, '#3b82f6'); // Напряжение (синий)
+    drawLine(2, 0.0, 2.5, '#10b981'); // Ток (зелёный)
+    ctx.fillStyle = '#3b82f6'; ctx.fillText('— Напряжение (2.8..4.3 В)', 45, 20);
+    ctx.fillStyle = '#10b981'; ctx.fillText('— Ток (0..2.5 А)', 230, 20);
+  } catch (e) {}
+}
+
+setInterval(() => {
+  fetchTelemetry();
+  if (document.getElementById('lab').classList.contains('active')) fetchLab();
+}, 2000);
+fetchTelemetry();
+fetchLab();
+</script>
 </body>
 </html>
